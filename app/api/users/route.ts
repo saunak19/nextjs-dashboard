@@ -3,11 +3,12 @@ import { getToken } from 'next-auth/jwt';
 import { NextRequest } from 'next/server';
 import { connectToDB } from '@/lib/db';
 import User from '@/models/User';
+import { checkSuperAdminAuth } from '@/lib/api-auth';
 
 export async function GET(req: NextRequest) {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token || !token.email) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    const { user, error, status } = await checkSuperAdminAuth(req);
+    if (error) {
+        return NextResponse.json({ message: error }, { status });
     }
 
     try {

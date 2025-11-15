@@ -8,18 +8,154 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Home, Video, Settings, Package, Menu } from "lucide-react";
+import {
+    Home,
+    Settings,
+    Package,
+    PlusCircle,
+    ChevronRight,
+    LayoutGrid,
+    TextAlignStart,
+    ShieldCheck,
+    Users,
+    Menu
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/dashboard/videos", label: "Videos", icon: Video },
-    { href: "/dashboard/billing", label: "Billing", icon: Package },
-    { href: "/dashboard/settings", label: "Settings", icon: Settings },
+// ---------------- Types ----------------
+
+type NavItemChild = {
+    href: string;
+    label: string;
+    icon: typeof Home;
+};
+
+type NavItem = {
+    href?: string;
+    label: string;
+    icon: typeof Home;
+    children?: NavItemChild[];
+    basePath: string;
+    roles?: ('user' | 'admin' | 'superadmin')[];
+};
+
+// ---------------- Nav Items ----------------
+
+const allNavItems: NavItem[] = [
+    { href: "/dashboard", label: "Dashboard", icon: Home, basePath: "/dashboard" },
+
+    {
+        label: "Product",
+        icon: Package,
+        basePath: "/dashboard/products",
+        roles: ["admin", "superadmin"],
+        children: [
+            {
+                href: "/dashboard/products",
+                label: "Products",
+                icon: TextAlignStart,
+            },
+            {
+                href: "/dashboard/products/new",
+                label: "Add Product",
+                icon: PlusCircle,
+            },
+        ],
+    },
+
+    {
+        href: "/dashboard/categories",
+        label: "Categories",
+        icon: LayoutGrid,
+        basePath: "/dashboard/categories",
+        roles: ["admin", "superadmin"],
+    },
+
+    {
+        href: "/dashboard/admin",
+        label: "Admin Panel",
+        icon: Users,
+        basePath: "/dashboard/admin",
+        roles: ["superadmin"],
+    },
+
+    {
+        href: "/dashboard/superadmin",
+        label: "Super Admin",
+        icon: ShieldCheck,
+        basePath: "/dashboard/superadmin",
+        roles: ["superadmin"],
+    },
+
+    { href: "/dashboard/billing", label: "Billing", icon: Package, basePath: "/dashboard/billing" },
+
+    { href: "/dashboard/settings", label: "Settings", icon: Settings, basePath: "/dashboard/settings" },
 ];
+
+// ---------------- Mobile Skeleton ----------------
+
+function MobileSidebarSkeleton() {
+    return (
+        <div className="md:hidden">
+            <Sheet>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                        <Menu className="h-5 w-5" />
+                        <span className="sr-only">Toggle Menu</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                    <div className="flex h-full flex-col">
+                        <div className="h-16 border-b px-6 flex items-center">
+                            <Skeleton className="h-6 w-24" />
+                        </div>
+                        <nav className="flex-1 p-4 space-y-3">
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-8 w-full" />
+                            <Skeleton className="h-8 w-full" />
+                        </nav>
+                    </div>
+                </SheetContent>
+            </Sheet>
+        </div>
+    );
+}
+
+// ---------------- Main Component ----------------
 
 export function MobileSidebar() {
     const pathname = usePathname();
+    const { data: session, status } = useSession();
+
+    const [openCollapsible, setOpenCollapsible] = useState(() =>
+        pathname.startsWith("/dashboard/products") ? "Product" : ""
+    );
+
+    if (status === "loading") {
+        return <MobileSidebarSkeleton />;
+    }
+
+    const userRole = session?.user?.role;
+
+    // Filter settings item
+    const settingsItem = allNavItems.find(item => item.href === "/dashboard/settings");
+
+    // Filter main items by role
+    const mainNavItems = allNavItems
+        .filter(item => item.href !== "/dashboard/settings")
+        .filter(item => {
+            if (!item.roles) return true;
+            return item.roles.includes(userRole as any);
+        });
 
     return (
         <div className="md:hidden">
@@ -33,22 +169,75 @@ export function MobileSidebar() {
                 <SheetContent side="left" className="w-64 p-0">
                     <div className="flex h-full flex-col">
 
+                        {/* Header */}
                         <div className="h-16 border-b px-6 flex items-center">
                             <Link href="/dashboard" className="font-bold text-lg">
-                                My SaaS App
+                                AI SaaS
                             </Link>
                         </div>
 
-                        <nav className="flex-1 p-4 space-y-2">
-                            {navItems.map((item) => {
-                                const isActive = pathname === item.href;
-                                return (
+                        {/* Main Nav */}
+                        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                            {mainNavItems.map(item =>
+                                item.children ? (
+                                    <Collapsible
+                                        key={item.label}
+                                        open={openCollapsible === item.label}
+                                        onOpenChange={() =>
+                                            setOpenCollapsible(
+                                                openCollapsible === item.label ? "" : item.label
+                                            )
+                                        }
+                                    >
+                                        <CollapsibleTrigger
+                                            className={cn(
+                                                "flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                                                "text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50",
+                                                pathname.startsWith(item.basePath) &&
+                                                "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <item.icon className="h-4 w-4" />
+                                                {item.label}
+                                            </div>
+                                            <ChevronRight
+                                                className={cn(
+                                                    "h-4 w-4 transition-transform",
+                                                    openCollapsible === item.label && "rotate-90"
+                                                )}
+                                            />
+                                        </CollapsibleTrigger>
+
+                                        <CollapsibleContent className="pt-2 pl-7 space-y-2">
+                                            {item.children.map(child => {
+                                                const isActive = pathname === child.href;
+
+                                                return (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        className={cn(
+                                                            "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                                                            isActive
+                                                                ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50"
+                                                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+                                                        )}
+                                                    >
+                                                        <child.icon className="h-4 w-4" />
+                                                        {child.label}
+                                                    </Link>
+                                                );
+                                            })}
+                                        </CollapsibleContent>
+                                    </Collapsible>
+                                ) : (
                                     <Link
                                         key={item.href}
-                                        href={item.href}
+                                        href={item.href!}
                                         className={cn(
                                             "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
-                                            isActive
+                                            pathname === item.href
                                                 ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50"
                                                 : "text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
                                         )}
@@ -56,9 +245,28 @@ export function MobileSidebar() {
                                         <item.icon className="h-4 w-4" />
                                         {item.label}
                                     </Link>
-                                );
-                            })}
+                                )
+                            )}
                         </nav>
+
+                        {/* Sticky Settings Link */}
+                        <div className="mt-auto p-4 border-t">
+                            {settingsItem && (
+                                <Link
+                                    key={settingsItem.href}
+                                    href={settingsItem.href!}
+                                    className={cn(
+                                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                                        pathname === settingsItem.href
+                                            ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50"
+                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50"
+                                    )}
+                                >
+                                    <settingsItem.icon className="h-4 w-4" />
+                                    {settingsItem.label}
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>

@@ -5,8 +5,6 @@ import { getToken } from 'next-auth/jwt';
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    console.log(`Middleware running for path: ${pathname}`);
-
     const token = await getToken({
         req: request,
         secret: process.env.NEXTAUTH_SECRET,
@@ -28,21 +26,26 @@ export async function middleware(request: NextRequest) {
 
     if (pathname.startsWith('/dashboard')) {
         if (!isLoggedIn) {
-            console.log('User not logged in. Redirecting to /login');
             const loginUrl = new URL('/login', request.url);
             loginUrl.searchParams.set('callbackUrl', pathname);
             return NextResponse.redirect(loginUrl);
         }
 
-        if (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/dashboard/products')) {
-            if (userRole !== 'admin' && userRole !== 'superadmin') {
-                return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+        const unauthorizedUrl = new URL('/dashboard?error=unauthorized', request.url);
+
+        // --- SUPER ADMIN ONLY ---
+        // Only 'superadmin' can access these.
+        if (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/dashboard/superadmin')) {
+            if (userRole !== 'superadmin') {
+                return NextResponse.redirect(unauthorizedUrl);
             }
         }
 
-        if (pathname.startsWith('/dashboard/superadmin')) {
-            if (userRole !== 'superadmin') {
-                return NextResponse.redirect(new URL('/dashboard?error=unauthorized', request.url));
+        // --- ADMIN + SUPER ADMIN ---
+        // 'admin' and 'superadmin' can access these.
+        if (pathname.startsWith('/dashboard/products') || pathname.startsWith('/dashboard/categories')) {
+            if (userRole !== 'admin' && userRole !== 'superadmin') {
+                return NextResponse.redirect(unauthorizedUrl);
             }
         }
 

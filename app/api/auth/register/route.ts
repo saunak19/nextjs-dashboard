@@ -16,6 +16,15 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
+        const passwordRegex =
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])(?!.*\s).{8,}$/;
+
+        if (!passwordRegex.test(password)) {
+            return NextResponse.json(
+                { error: "Password must be at least 8 characters long, include uppercase, lowercase, number, and special character" },
+                { status: 400 }
+            );
+        }
 
         await connectToDB();
 

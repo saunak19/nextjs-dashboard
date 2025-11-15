@@ -22,7 +22,9 @@ import {
 } from "@/components/ui/table";
 
 import { Badge } from "@/components/ui/badge";
-import { Users, Package } from "lucide-react";
+import { Users, Package, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,7 @@ async function getDashboardData() {
         const session = await getServerSession(authOptions);
         if (!session?.user || (session.user.role !== "admin" && session.user.role !== "superadmin")) {
             throw new Error("Unauthorized");
+
         }
 
         await connectToDB();
@@ -77,7 +80,11 @@ async function getDashboardData() {
     }
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+    searchParams
+}: {
+    searchParams: { error?: string }
+}) {
     const data = await getDashboardData();
 
     if (!data) {
@@ -95,6 +102,15 @@ export default async function DashboardPage() {
 
     return (
         <div className="flex flex-col gap-6">
+            {searchParams.error === 'unauthorized' && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Access Denied</AlertTitle>
+                    <AlertDescription>
+                        You do not have permission to access that page.
+                    </AlertDescription>
+                </Alert>
+            )}
             <h1 className="text-3xl font-semibold">Dashboard</h1>
 
             {/* STAT CARDS */}
@@ -142,7 +158,7 @@ export default async function DashboardPage() {
                             </TableHeader>
 
                             <TableBody>
-                                {recentUsers.map((user) => (
+                                {recentUsers.map((user: any) => (
                                     <TableRow key={user._id}>
                                         <TableCell>{user.name}</TableCell>
                                         <TableCell>{user.email}</TableCell>
@@ -183,7 +199,7 @@ export default async function DashboardPage() {
                             </TableHeader>
 
                             <TableBody>
-                                {recentProducts.map((product) => (
+                                {recentProducts.map((product: any) => (
                                     <TableRow key={product._id}>
                                         <TableCell>{product.name}</TableCell>
                                         <TableCell>{product.sku}</TableCell>
@@ -197,5 +213,5 @@ export default async function DashboardPage() {
 
             </div>
         </div>
-    );  
+    );
 }
